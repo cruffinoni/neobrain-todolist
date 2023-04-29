@@ -1,9 +1,8 @@
 package config
 
 type Database struct {
-	Host     string
-	Port     int
-	Username string
-	Password string
-	Database string
+	Host     string `env:"HOST"`
+	Port     int    `env:"PORT" envDefault:"3306"`
+	Username string `env:"USERNAME"`
+	Password string `env:"PASSWORD"`
 }

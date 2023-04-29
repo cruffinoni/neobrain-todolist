@@ -1,6 +1,7 @@
 package config
 
 type Global struct {
-	Database *Database
-	APIPort  int
+	Environment string   `env:"ENVIRONMENT" envDefault:"local"`
+	APIPort     int      `env:"PORT" envDefault:"8080"`
+	Database    Database `envPrefix:"DATABASE_"`
 }

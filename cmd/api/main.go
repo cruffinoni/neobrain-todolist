@@ -1,11 +1,14 @@
-package api
+package main
 
 import (
+	"fmt"
+	"log"
+
 	"github.com/caarlos0/env/v6"
+	"github.com/cruffinoni/neobrain-todolist/internal/api"
 	"github.com/cruffinoni/neobrain-todolist/internal/config"
 	"github.com/cruffinoni/neobrain-todolist/internal/database"
 	"github.com/gin-gonic/gin"
-	"log"
 )
 
 func main() {
@@ -13,24 +16,27 @@ func main() {
 	if err := env.Parse(&configuration, env.Options{RequiredIfNoDef: true}); err != nil {
 		log.Fatalf("error during parsing config: %v", err)
 	}
-	db, err := database.NewDB(configuration.Database)
+	db, err := database.NewDB(&configuration.Database)
 	if err != nil {
 		log.Fatalf("can't initialize connection to the database: %v", err)
 	}
 
-	//var serverStopped = false
+	if configuration.Environment != "local" {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
+	routes := api.NewRoutes(db)
 	router := gin.New()
-	//onSignalFn := func(sig os.Signal) {
-	//	if serverStopped {
-	//		return
-	//	}
-	//	serverStopped = true
-	//	err := srv.Shutdown(context.Background())
-	//	if err != nil && !errors.Is(err, http.ErrServerClosed) {
-	//		log.Printf("error while shutting down the server: %v", err)
-	//	}
-	//}
-	//ctx, cancelFn := contextual.NewContext(
-	//	contextual.WithSignalListener(onSignalFn, syscall.SIGINT, syscall.SIGTERM),
-	//)
+
+	g := router.Group("/tasks")
+	g.PUT("", routes.AddTask)
+	g.GET("", routes.ListTasks)
+	g.DELETE("/:task_id", routes.DeleteTask)
+	g.PATCH("/:task_id/complete", routes.MarkAsDone)
+
+	log.Printf("Starting api...")
+	err = router.Run(fmt.Sprintf(":%d", configuration.APIPort))
+	if err != nil {
+		log.Fatalf("server ended with an error: %v", err)
+	}
 }
