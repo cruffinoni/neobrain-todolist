@@ -1,7 +1,6 @@
 package database
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -74,8 +73,6 @@ func (db *DB) MarkTaskAsDone(taskID int64) error {
 	return err
 }
 
-var ErrNoTaskFound = errors.New("no task found")
-
 type TaskFilter string
 
 const (
@@ -100,4 +97,27 @@ func (db *DB) GetTasks(filter TaskFilter) ([]*Task, error) {
 	}
 
 	return tasks, nil
+}
+
+func (db *DB) ImportTasks(tasks []*Task) error {
+	tx, err := db.instance.Begin()
+	if err != nil {
+		return err
+	}
+
+	stmt, err := tx.Prepare("INSERT INTO todolist.tasks (task, done) VALUES (?, ?)")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, task := range tasks {
+		_, err = stmt.Exec(task.Task, task.Done)
+		if err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+	}
+
+	return tx.Commit()
 }

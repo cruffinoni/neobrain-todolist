@@ -56,7 +56,7 @@ func (r *Routes) DeleteTask(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.NewStatusOKBuilder("task deleted successfully"))
 }
 
-func (r *Routes) MarkAsDone(ctx *gin.Context) {
+func (r *Routes) MarkTaskAsDone(ctx *gin.Context) {
 	taskIDStr := ctx.Param("task_id")
 	taskID, err := strconv.ParseInt(taskIDStr, 10, 64)
 	if err != nil {
@@ -97,4 +97,63 @@ func (r *Routes) ListTasks(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, tasks)
+}
+
+func (r *Routes) ImportTasks(ctx *gin.Context) {
+	file, _, err := ctx.Request.FormFile("file")
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.NewBadRequestBuilder(err.Error()))
+		return
+	}
+	defer file.Close()
+
+	formats := map[string]Importer{
+		"csv":  CSVFormat{},
+		"xlsx": ExcelFormat{},
+	}
+	i, ok := formats[ctx.DefaultQuery("format", "none")]
+	if !ok {
+		ctx.JSON(http.StatusBadRequest, utils.NewBadRequestBuilder("unknown format type"))
+	}
+
+	var tasks []*database.Task
+	if tasks, err = i.ImportTasks(file); err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.NewBadRequestBuilder(err.Error()))
+		return
+	}
+
+	err = r.db.ImportTasks(tasks)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.NewInternalServerErrorBuilder(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, utils.NewStatusOKBuilder("tasks imported successfully"))
+}
+
+func (r *Routes) ExportTasks(ctx *gin.Context) {
+	tasks, err := r.db.GetTasks(database.TaskFilterAll)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.NewInternalServerErrorBuilder(err))
+		return
+	}
+
+	var e Exporter
+	switch ctx.DefaultQuery("format", "none") {
+	case "csv":
+		e = CSVFormat{}
+		ctx.Header("Content-Disposition", "attachment; filename=tasks.csv")
+		ctx.Header("Content-Type", "text/csv")
+	case "xlsx":
+		e = ExcelFormat{}
+		ctx.Header("Content-Disposition", "attachment; filename=tasks.xlsx")
+		ctx.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	default:
+		ctx.JSON(http.StatusBadRequest, utils.NewBadRequestBuilder("unknown format type"))
+		return
+	}
+	if err = e.ExportTasks(tasks, ctx.Writer); err != nil {
+		return
+	}
+	ctx.Status(http.StatusOK)
 }

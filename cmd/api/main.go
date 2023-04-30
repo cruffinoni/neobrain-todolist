@@ -32,7 +32,9 @@ func main() {
 	g.PUT("", routes.AddTask)
 	g.GET("", routes.ListTasks)
 	g.DELETE("/:task_id", routes.DeleteTask)
-	g.PATCH("/:task_id/complete", routes.MarkAsDone)
+	g.PATCH("/:task_id/complete", routes.MarkTaskAsDone)
+	g.POST("/import", routes.ImportTasks)
+	g.POST("/export", routes.ExportTasks)
 
 	log.Printf("Starting api...")
 	err = router.Run(fmt.Sprintf(":%d", configuration.APIPort))
