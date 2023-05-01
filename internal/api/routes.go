@@ -1,6 +1,7 @@
 package api
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 
@@ -10,7 +11,7 @@ import (
 )
 
 type Routes struct {
-	db *database.DB
+	db database.Database
 }
 
 func NewRoutes(db *database.DB) *Routes {
@@ -29,6 +30,10 @@ func (r *Routes) AddTask(ctx *gin.Context) {
 	var task AddTaskBody
 	if err := ctx.ShouldBindJSON(&task); err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.NewBadRequestBuilder(err.Error()))
+		return
+	}
+	if task.Task == "" {
+		ctx.JSON(http.StatusBadRequest, utils.NewBadRequestBuilder("the task can't be empty"))
 		return
 	}
 	id, err := r.db.AddTask(task.Task)
@@ -87,6 +92,7 @@ func (r *Routes) ListTasks(ctx *gin.Context) {
 	}
 
 	tasks, err := r.db.GetTasks(filter)
+	log.Printf("Ret from err: %v & %v", tasks, err)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.NewInternalServerErrorBuilder(err))
 		return

@@ -10,6 +10,14 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+type Database interface {
+	AddTask(task string) (int64, error)
+	DeleteTask(taskID int64) error
+	MarkTaskAsDone(taskID int64) error
+	GetTasks(filter TaskFilter) ([]*Task, error)
+	ImportTasks(tasks []*Task) error
+}
+
 type DB struct {
 	instance *sqlx.DB
 }
