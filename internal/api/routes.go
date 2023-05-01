@@ -1,7 +1,6 @@
 package api
 
 import (
-	"log"
 	"net/http"
 	"strconv"
 
@@ -92,7 +91,6 @@ func (r *Routes) ListTasks(ctx *gin.Context) {
 	}
 
 	tasks, err := r.db.GetTasks(filter)
-	log.Printf("Ret from err: %v & %v", tasks, err)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.NewInternalServerErrorBuilder(err))
 		return
